@@ -1724,3 +1724,4 @@ h2 span {
         width: 100%
     }
 }
+.import-summary{display:flex;flex-direction:column;gap:5px;padding:16px;background:var(--green-soft);font-size:.72rem}.import-summary strong{font-family:"Playfair Display",serif;font-size:1.4rem}.import-summary span{color:var(--muted)}.import-preview{margin-top:18px;border-top:1px solid var(--line)}.import-preview>div{display:grid;grid-template-columns:84px 1fr;gap:4px 14px;padding:13px 0;border-bottom:1px solid var(--line);font-size:.68rem}.import-preview span,.import-preview small{color:var(--muted)}.import-preview small{grid-column:2}

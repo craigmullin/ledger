@@ -28,6 +28,7 @@ export interface ServiceEntry {
   mileage?: number;
   providerType?: "diy" | "shop" | "dealer" | "other";
   totalCostCents?: number;
+  estimatedShopCostCents?: number;
   aiReviewStatus: "not_requested" | "pending" | "reviewed" | "dismissed" | "failed";
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -38,4 +39,6 @@ export type View =
   | { name: "garage" }
   | { name: "vehicle"; vehicleId: string }
   | { name: "addVehicle" }
+  | { name: "editVehicle"; vehicleId: string }
+  | { name: "importCsv"; vehicleId: string }
   | { name: "addEntry"; vehicleId: string };

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  deleteField,
   getDocs,
   orderBy,
   query,
@@ -61,6 +62,7 @@ export interface NewEntryValues {
   serviceDate: string;
   mileage?: number;
   totalCostCents?: number;
+  estimatedShopCostCents?: number;
   providerType?: ServiceEntry["providerType"];
 }
 
@@ -112,6 +114,50 @@ export async function addServiceEntry(ownerUserId: string, vehicleId: string, va
   });
 
   return entryRef.id;
+}
+
+export type ImportedServiceEntryValues = NewEntryValues;
+
+export async function importServiceEntries(ownerUserId: string, vehicleId: string, rows: ImportedServiceEntryValues[]) {
+  if (!rows.length) throw new Error("No valid maintenance rows were found.");
+  if (rows.length > 200) throw new Error("Import no more than 200 entries at a time.");
+  const vehicleRef = doc(db, "vehicles", vehicleId);
+  const sortedRows = [...rows].sort((a, b) => a.serviceDate.localeCompare(b.serviceDate));
+
+  await runTransaction(db, async (transaction) => {
+    const vehicleSnapshot = await transaction.get(vehicleRef);
+    if (!vehicleSnapshot.exists() || vehicleSnapshot.data().ownerUserId !== ownerUserId) throw new Error("Vehicle not found or unavailable.");
+    let latestMileage = vehicleSnapshot.data().latestMileage as number | undefined;
+    let latestMileageDate: Timestamp | undefined;
+
+    for (const row of sortedRows) {
+      const entryRef = doc(collection(db, "serviceEntries"));
+      const serviceDate = Timestamp.fromDate(new Date(`${row.serviceDate}T12:00:00`));
+      transaction.set(entryRef, { ...withoutUndefined(row), ownerUserId, vehicleId, serviceDate, aiReviewStatus: "not_requested", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+      if (row.mileage != null) {
+        const readingRef = doc(collection(db, "odometerReadings"));
+        transaction.set(readingRef, { ownerUserId, vehicleId, readingDate: serviceDate, mileage: row.mileage, source: "import", serviceEntryId: entryRef.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+        if (shouldAdvanceMileage(latestMileage, row.mileage)) { latestMileage = row.mileage; latestMileageDate = serviceDate; }
+      }
+    }
+    if (latestMileage != null && latestMileageDate) transaction.update(vehicleRef, { latestMileage, latestMileageDate, updatedAt: serverTimestamp() });
+  });
+}
+
+export async function updateVehicle(
+  vehicleId: string,
+  values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate">,
+) {
+  await updateDoc(doc(db, "vehicles", vehicleId), {
+    year: values.year,
+    make: values.make,
+    model: values.model,
+    nickname: values.nickname ?? deleteField(),
+    trim: values.trim ?? deleteField(),
+    vin: values.vin ?? deleteField(),
+    licensePlate: values.licensePlate ?? deleteField(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export function withoutUndefined<T extends object>(values: T): Partial<T> {
