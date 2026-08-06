@@ -46,6 +46,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   const ownerId = demo ? "demo" : user?.uid;
   const selectedVehicle = view.name === "vehicle" || view.name === "addEntry" || view.name === "editVehicle" || view.name === "importCsv" || view.name === "editEntry"
@@ -74,7 +75,9 @@ export default function App() {
   }, [ownerId, selectedVehicle, demo]);
 
   if (!authReady) return <LoadingScreen />;
-  if (!ownerId) return <AuthScreen onDemo={() => { setDemo(true); setVehicles(demoVehicles); setEntries(demoEntries); }} />;
+  if (!ownerId) return showAuth
+    ? <AuthScreen onDemo={() => { setDemo(true); setVehicles(demoVehicles); setEntries(demoEntries); }} />
+    : <PublicLanding onSignIn={() => setShowAuth(true)} />;
 
   const navigate = (next: View) => { setError(""); setView(next); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -336,6 +339,16 @@ function EntryForm({ vehicle, onCancel, onSave }: { vehicle: Vehicle; onCancel: 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); const mileage = String(form.get("mileage")).trim(); const cost = String(form.get("cost")).trim(); try { await onSave({ description: String(form.get("description")).trim(), serviceDate: String(form.get("date")), mileage: mileage ? Number(mileage) : undefined, totalCostCents: normalizeMoneyToCents(cost), providerType: String(form.get("provider")) as ServiceEntry["providerType"] || undefined, photoFiles }); } catch { setError("Your entry is still here, but we couldn't save it. Check your connection and try again."); setSaving(false); } }
   return <main className="entry-page"><button className="back-link" onClick={onCancel}>? {vehicleName(vehicle)}</button><div className="entry-heading"><p className="kicker">New entry ? {vehicle.nickname || vehicleName(vehicle)}</p><h1>What happened<span>?</span></h1><p>Write it the way you&rsquo;d tell a friend. The details can come later.</p></div><form className="entry-form" onSubmit={submit}><label className="description-field"><span className="sr-only">What happened?</span><textarea name="description" required autoFocus placeholder="Replaced rear brake pads and rotors?" rows={4} /></label><div className="entry-fields"><label>Date<input type="date" name="date" required defaultValue={today} /></label><label>Mileage <small>Recommended</small><input type="number" name="mileage" min="0" placeholder={vehicle.latestMileage?.toLocaleString() || "Current mileage"} /></label><label>Cost <small>Optional</small><div className="money-field"><span>$</span><input type="number" name="cost" min="0" step="0.01" placeholder="0.00" /></div></label><label>Performed by <small>Optional</small><select name="provider" defaultValue="diy"><option value="diy">Me</option><option value="shop">Shop</option><option value="dealer">Dealer</option><option value="other">Other</option></select></label></div><button type="button" className="details-toggle" onClick={() => setDetails(!details)}>{details ? "? Hide details" : "+ Add details"}</button>{details && <div className="details-note"><p>Categories, parts, reminders, warranties, and private notes are coming next. The basic record is saved first.</p></div>}<label className="attachment-button"><span>?</span><b>Add receipt or photos</b><small>{photoFiles.length ? `${photoFiles.length} ready to upload` : "JPEG, PNG, HEIC, or WebP ? up to 10 MB"}</small><input className="sr-only" type="file" accept="image/*" multiple onChange={(event) => setPhotoFiles(Array.from(event.target.files ?? []))} /></label>{error && <p className="form-error" role="alert">{error}</p>}<div className="entry-save"><p>Entries save first; photo uploads continue independently.</p><button className="primary-button" disabled={saving}>{saving ? "Saving entry?" : "Save entry ?"}</button></div></form></main>;
+}
+
+function PublicLanding({ onSignIn }: { onSignIn: () => void }) {
+  return <main className="public-page">
+    <header className="public-header"><div className="public-brand" aria-label="Ledger"><span className="mark-dot">M.</span><b>L</b><strong> Ledger</strong></div><button className="public-signin" onClick={onSignIn}>Sign in</button></header>
+    <section className="public-hero"><p className="kicker">Personal software project</p><h1>Your vehicle&rsquo;s<br />memory<span>.</span></h1><p className="public-lede">Ledger is an automotive maintenance tracker for recording services, repairs, receipts, and mileage in one private garage.</p><button className="primary-button" onClick={onSignIn}>Sign in to Ledger</button></section>
+    <section className="public-details" aria-label="About Ledger"><div><h2>Built for the long haul.</h2><p>Ledger is currently under development by Craig Mullin as a personal software development project.</p></div><div><h2>Private by design.</h2><p>Your vehicle records and uploads are available only to the authenticated account that owns them. Visitors cannot view another person&rsquo;s garage.</p></div></section>
+    <footer className="public-footer"><p>&copy; {new Date().getFullYear()} Craig Mullin. Ledger is currently under development.</p><nav aria-label="Project links"><a href="https://github.com/craigmullin/ledger" target="_blank" rel="noreferrer">GitHub</a><a href="#privacy">Privacy</a><a href="https://github.com/craigmullin/ledger/issues" target="_blank" rel="noreferrer">Contact</a></nav></footer>
+    <section className="privacy-section" id="privacy"><h2>Privacy</h2><p>Ledger stores vehicle details, maintenance records, and uploads for the signed-in account. These records are not public, are not sold, and are not shared with other Ledger users. Contact the project owner through the project&rsquo;s GitHub page with privacy questions.</p></section>
+  </main>;
 }
 
 function AuthScreen({ onDemo }: { onDemo: () => void }) {

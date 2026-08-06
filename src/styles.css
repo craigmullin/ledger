@@ -1724,6 +1724,59 @@ h2 span {
         width: 100%
     }
 }
+
+.public-page {
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 0 clamp(24px, 7vw, 112px) 52px
+}
+
+.public-header,
+.public-footer,
+.public-details {
+    max-width: 1180px;
+    margin: 0 auto
+}
+
+.public-header {
+    min-height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line)
+}
+
+.public-brand { font-size: 1.1rem; letter-spacing: -.03em }
+.public-brand b { color: var(--green); font-family: var(--serif); font-size: 1.55rem }
+.public-brand strong { margin-left: 7px }
+.mark-dot { color: var(--orange); font-weight: 800 }
+.public-signin { border: 1px solid var(--green); background: transparent; color: var(--green); border-radius: 999px; padding: 10px 18px; font: inherit; font-weight: 700; cursor: pointer }
+
+.public-hero { max-width: 1180px; margin: 0 auto; padding: clamp(90px, 15vw, 178px) 0 clamp(70px, 12vw, 132px) }
+.public-hero h1 { font-size: clamp(4.1rem, 10vw, 8.7rem); line-height: .87; letter-spacing: -.06em; max-width: 850px; margin: 18px 0 28px }
+.public-hero h1 span { color: var(--orange) }
+.public-lede { max-width: 540px; font-size: 1.15rem; line-height: 1.7; margin-bottom: 30px; color: var(--muted) }
+.public-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+.public-details div { padding: 38px 0; max-width: 420px }
+.public-details div + div { border-left: 1px solid var(--line); padding-left: 42px }
+.public-details h2, .privacy-section h2 { font-size: 1.45rem; margin-bottom: 12px }
+.public-details p, .privacy-section p, .public-footer { color: var(--muted); line-height: 1.65 }
+.public-footer { padding: 28px 0; display: flex; gap: 20px; justify-content: space-between; font-size: .82rem }
+.public-footer p { margin: 0 }
+.public-footer nav { display: flex; gap: 18px }
+.public-footer a { color: var(--green); font-weight: 700 }
+.privacy-section { max-width: 1180px; margin: 0 auto; padding-top: 50px; max-width: 720px; margin-left: 0 }
+
+@media (max-width: 640px) {
+    .public-page { padding-left: 25px; padding-right: 25px }
+    .public-hero { padding-top: 86px }
+    .public-hero h1 { font-size: clamp(3.6rem, 18vw, 5.5rem) }
+    .public-details { grid-template-columns: 1fr }
+    .public-details div + div { border-left: 0; border-top: 1px solid var(--line); padding-left: 0 }
+    .public-footer { display: block }
+    .public-footer nav { margin-top: 16px }
+}
 .account-menu{position:relative}.account-menu-popover{position:absolute;top:50px;right:0;min-width:125px;padding:6px;background:var(--white);border:1px solid var(--line);box-shadow:var(--shadow);z-index:30}.account-menu-popover button{width:100%;border:0;background:transparent;padding:10px;text-align:left;font-size:.72rem;color:var(--ink)}.account-menu-popover button:hover{background:var(--green-soft)}
 .import-summary{display:flex;flex-direction:column;gap:5px;padding:16px;background:var(--green-soft);font-size:.72rem}.import-summary strong{font-family:"Playfair Display",serif;font-size:1.4rem}.import-summary span{color:var(--muted)}.import-preview{margin-top:18px;border-top:1px solid var(--line)}.import-preview>div{display:grid;grid-template-columns:84px 1fr;gap:4px 14px;padding:13px 0;border-bottom:1px solid var(--line);font-size:.68rem}.import-preview span,.import-preview small{color:var(--muted)}.import-preview small{grid-column:2}
 .vehicle-art-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vehicle-photo-preview{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:4px;margin:0 0 16px}
