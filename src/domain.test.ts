@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isValidEntry, normalizeMoneyToCents, shouldAdvanceMileage } from "./domain";
+import { withoutUndefined } from "./data";
 
 describe("Ledger entry rules", () => {
   it("requires only a description and service date", () => {
@@ -15,5 +16,9 @@ describe("Ledger entry rules", () => {
   it("does not silently regress latest mileage", () => {
     expect(shouldAdvanceMileage(118420, 117000)).toBe(false);
     expect(shouldAdvanceMileage(118420, 119001)).toBe(true);
+  });
+
+  it("does not send optional undefined fields to Firestore", () => {
+    expect(withoutUndefined({ make: "Honda", trim: undefined })).toEqual({ make: "Honda" });
   });
 });

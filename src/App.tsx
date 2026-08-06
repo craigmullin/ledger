@@ -10,6 +10,7 @@ import { Timestamp } from "firebase/firestore";
 import { auth, isFirebaseConfigured } from "./firebase";
 import { addServiceEntry, addVehicle, archiveVehicle, loadEntries, loadVehicles } from "./data";
 import { normalizeMoneyToCents, shouldAdvanceMileage } from "./domain";
+import { decodeVin, isValidVin, normalizeVin } from "./vin";
 import type { ServiceEntry, Vehicle, View } from "./types";
 
 const demoVehicles: Vehicle[] = [
@@ -164,9 +165,34 @@ function TimelineItem({ entry }: { entry: ServiceEntry }) { return <article clas
 
 interface VehicleFormValues { year: number; make: string; model: string; nickname?: string; trim?: string; vin?: string; licensePlate?: string }
 function VehicleForm({ onCancel, onSave }: { onCancel: () => void; onSave: (values: VehicleFormValues) => Promise<void> }) {
-  const [saving, setSaving] = useState(false); const [error, setError] = useState("");
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); try { await onSave({ year: Number(form.get("year")), make: String(form.get("make")).trim(), model: String(form.get("model")).trim(), nickname: String(form.get("nickname")).trim() || undefined, trim: String(form.get("trim")).trim() || undefined, vin: String(form.get("vin")).trim() || undefined, licensePlate: String(form.get("plate")).trim() || undefined }); } catch { setError("We couldn't save this vehicle. Please try again."); setSaving(false); } }
-  return <main className="form-page"><button className="back-link" onClick={onCancel}>← My Garage</button><div className="form-layout"><div className="form-intro"><p className="kicker">New vehicle</p><h1>What&rsquo;s in<br />your garage<span>?</span></h1><p>Start with the essentials. Everything else can wait.</p><div className="form-number">01 <i /> 02</div></div><form className="ledger-form" onSubmit={submit}><fieldset><legend>The essentials</legend><div className="field-row three"><label>Year<input name="year" type="number" required min="1886" max={new Date().getFullYear() + 1} placeholder="2015" /></label><label>Make<input name="make" required placeholder="Honda" /></label><label>Model<input name="model" required placeholder="CR-V" /></label></div></fieldset><fieldset><legend>Make it yours <small>Optional</small></legend><label>Nickname<input name="nickname" placeholder="The Daily" /></label><label>Trim<input name="trim" placeholder="EX-L AWD" /></label><div className="field-row"><label>VIN<input name="vin" maxLength={17} placeholder="17-character VIN" /></label><label>License plate<input name="plate" placeholder="ABC 1234" /></label></div></fieldset>{error && <p className="form-error" role="alert">{error}</p>}<div className="form-actions"><button type="button" className="quiet-button" onClick={onCancel}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Adding vehicle…" : "Add to garage →"}</button></div></form></div></main>;
+  const [saving, setSaving] = useState(false);
+  const [decoding, setDecoding] = useState(false);
+  const [error, setError] = useState("");
+  const [decodeMessage, setDecodeMessage] = useState("");
+  const [values, setValues] = useState({ year: "", make: "", model: "", trim: "", vin: "" });
+  const setField = (field: keyof typeof values, value: string) => setValues((current) => ({ ...current, [field]: value }));
+
+  async function handleDecode() {
+    setDecodeMessage("");
+    const vin = normalizeVin(values.vin);
+    setField("vin", vin);
+    if (!isValidVin(vin)) { setDecodeMessage("Enter a complete 17-character VIN. VINs do not use I, O, or Q."); return; }
+    setDecoding(true);
+    try {
+      const decoded = await decodeVin(vin);
+      setValues((current) => ({ ...current, year: String(decoded.year), make: decoded.make, model: decoded.model, trim: decoded.trim ?? current.trim, vin }));
+      setDecodeMessage("Vehicle details found. Review them before saving.");
+    } catch (cause) {
+      setDecodeMessage(cause instanceof Error ? cause.message : "This VIN could not be decoded. You can still enter the vehicle manually.");
+    } finally { setDecoding(false); }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget);
+    try { await onSave({ year: Number(values.year), make: values.make.trim(), model: values.model.trim(), nickname: String(form.get("nickname")).trim() || undefined, trim: values.trim.trim() || undefined, vin: normalizeVin(values.vin) || undefined, licensePlate: String(form.get("plate")).trim() || undefined }); }
+    catch { setError("We couldn't save this vehicle. Please try again."); setSaving(false); }
+  }
+  return <main className="form-page"><button className="back-link" onClick={onCancel}>← My Garage</button><div className="form-layout"><div className="form-intro"><p className="kicker">New vehicle</p><h1>What&rsquo;s in<br />your garage<span>?</span></h1><p>Start with the essentials. Everything else can wait.</p><div className="form-number">01 <i /> 02</div></div><form className="ledger-form" onSubmit={submit}><fieldset><legend>The essentials</legend><div className="vin-decode"><label>VIN <small>Optional</small><div className="vin-input"><input value={values.vin} onChange={(event) => { setField("vin", event.target.value.toUpperCase()); setDecodeMessage(""); }} maxLength={17} autoComplete="off" spellCheck={false} placeholder="17-character VIN" aria-describedby="vin-message" /><button type="button" className="quiet-button" onClick={() => void handleDecode()} disabled={decoding || saving}>{decoding ? "Decoding…" : "Decode VIN"}</button></div></label>{decodeMessage && <p id="vin-message" className={decodeMessage.startsWith("Vehicle details") ? "field-success" : "field-help"} role="status">{decodeMessage}</p>}<p className="field-help">Uses the U.S. Department of Transportation&rsquo;s NHTSA vehicle database.</p></div><div className="field-row three"><label>Year<input name="year" type="number" required min="1886" max={new Date().getFullYear() + 1} placeholder="2015" value={values.year} onChange={(event) => setField("year", event.target.value)} /></label><label>Make<input name="make" required placeholder="Honda" value={values.make} onChange={(event) => setField("make", event.target.value)} /></label><label>Model<input name="model" required placeholder="CR-V" value={values.model} onChange={(event) => setField("model", event.target.value)} /></label></div></fieldset><fieldset><legend>Make it yours <small>Optional</small></legend><label>Nickname<input name="nickname" placeholder="The Daily" /></label><label>Trim<input name="trim" placeholder="EX-L AWD" value={values.trim} onChange={(event) => setField("trim", event.target.value)} /></label><label>License plate<input name="plate" placeholder="ABC 1234" /></label></fieldset>{error && <p className="form-error" role="alert">{error}</p>}<div className="form-actions"><button type="button" className="quiet-button" onClick={onCancel}>Cancel</button><button className="primary-button" disabled={saving || decoding}>{saving ? "Adding vehicle…" : "Add to garage →"}</button></div></form></div></main>;
 }
 
 interface EntryFormValues { description: string; serviceDate: string; mileage?: number; totalCostCents?: number; providerType?: ServiceEntry["providerType"] }

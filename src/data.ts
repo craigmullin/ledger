@@ -30,7 +30,7 @@ export async function addVehicle(
   values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate">,
 ) {
   return addDoc(collection(db, "vehicles"), {
-    ...values,
+    ...withoutUndefined(values),
     ownerUserId,
     status: "active",
     createdAt: serverTimestamp(),
@@ -77,7 +77,7 @@ export async function addServiceEntry(ownerUserId: string, vehicleId: string, va
     }
 
     transaction.set(entryRef, {
-      ...values,
+      ...withoutUndefined(values),
       ownerUserId,
       vehicleId,
       serviceDate,
@@ -112,4 +112,10 @@ export async function addServiceEntry(ownerUserId: string, vehicleId: string, va
   });
 
   return entryRef.id;
+}
+
+export function withoutUndefined<T extends object>(values: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
 }
