@@ -16,7 +16,7 @@ import {
 import { db, storage } from "./firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { shouldAdvanceMileage } from "./domain";
-import type { ServiceEntry, Vehicle } from "./types";
+import type { MaintenanceItem, ServiceEntry, Vehicle } from "./types";
 
 export async function loadVehicles(ownerUserId: string): Promise<Vehicle[]> {
   const snapshot = await getDocs(query(
@@ -117,6 +117,33 @@ export async function addServiceEntry(ownerUserId: string, vehicleId: string, va
 
   return entryRef.id;
 }
+
+export async function updateServiceEntry(entryId: string, values: NewEntryValues) {
+  await updateDoc(doc(db, "serviceEntries", entryId), { ...withoutUndefined(values), serviceDate: Timestamp.fromDate(new Date(`${values.serviceDate}T12:00:00`)), updatedAt: serverTimestamp() });
+}
+
+export async function recordMileage(ownerUserId: string, vehicleId: string, mileage: number, readingDate: string) {
+  const vehicleRef = doc(db, "vehicles", vehicleId);
+  const readingRef = doc(collection(db, "odometerReadings"));
+  const date = Timestamp.fromDate(new Date(`${readingDate}T12:00:00`));
+  await runTransaction(db, async (transaction) => {
+    const vehicle = await transaction.get(vehicleRef);
+    if (!vehicle.exists() || vehicle.data().ownerUserId !== ownerUserId) throw new Error("Vehicle not found or unavailable.");
+    transaction.set(readingRef, { ownerUserId, vehicleId, readingDate: date, mileage, source: "manual", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+    if (shouldAdvanceMileage(vehicle.data().latestMileage as number | undefined, mileage)) transaction.update(vehicleRef, { latestMileage: mileage, latestMileageDate: date, updatedAt: serverTimestamp() });
+  });
+}
+
+export async function loadMaintenanceItems(ownerUserId: string, vehicleId: string): Promise<MaintenanceItem[]> {
+  const snapshot = await getDocs(query(collection(db, "maintenanceItems"), where("ownerUserId", "==", ownerUserId), where("vehicleId", "==", vehicleId)));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as MaintenanceItem);
+}
+
+export async function addMaintenanceItem(ownerUserId: string, vehicleId: string, values: Omit<MaintenanceItem, "id" | "ownerUserId" | "vehicleId" | "createdAt" | "updatedAt" | "schemaVersion">) {
+  return addDoc(collection(db, "maintenanceItems"), { ...withoutUndefined(values), ownerUserId, vehicleId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+}
+
+export async function deleteMaintenanceItem(itemId: string) { await updateDoc(doc(db, "maintenanceItems", itemId), { enabled: false, updatedAt: serverTimestamp() }); }
 
 export type ImportedServiceEntryValues = NewEntryValues;
 
