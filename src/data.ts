@@ -177,6 +177,17 @@ export async function uploadVehiclePhoto(ownerUserId: string, vehicleId: string,
   return heroImageUrl;
 }
 
+export async function uploadEntryPhoto(ownerUserId: string, vehicleId: string, serviceEntryId: string, file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Choose an image smaller than 10 MB.");
+  const attachmentRef = doc(collection(db, "attachments"));
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `users/${ownerUserId}/vehicles/${vehicleId}/attachments/${attachmentRef.id}/${safeName}`;
+  const fileRef = ref(storage, storagePath);
+  await uploadBytes(fileRef, file, { contentType: file.type });
+  await setDoc(attachmentRef, { ownerUserId, vehicleId, ownerType: "service_entry", ownerId: serviceEntryId, storagePath, fileName: file.name, contentType: file.type, sizeBytes: file.size, documentType: "photo", uploadStatus: "complete", extractionStatus: "not_requested", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+}
+
 export function withoutUndefined<T extends object>(values: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== undefined),
