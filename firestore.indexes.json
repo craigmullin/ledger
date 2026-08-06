@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "serviceEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUserId", "order": "ASCENDING" },
+        { "fieldPath": "vehicleId", "order": "ASCENDING" },
+        { "fieldPath": "serviceDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "odometerReadings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUserId", "order": "ASCENDING" },
+        { "fieldPath": "vehicleId", "order": "ASCENDING" },
+        { "fieldPath": "readingDate", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
