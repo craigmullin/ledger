@@ -8,11 +8,13 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, storage } from "./firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { shouldAdvanceMileage } from "./domain";
 import type { ServiceEntry, Vehicle } from "./types";
 
@@ -28,7 +30,7 @@ export async function loadVehicles(ownerUserId: string): Promise<Vehicle[]> {
 
 export async function addVehicle(
   ownerUserId: string,
-  values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate">,
+  values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate" | "color">,
 ) {
   return addDoc(collection(db, "vehicles"), {
     ...withoutUndefined(values),
@@ -146,7 +148,7 @@ export async function importServiceEntries(ownerUserId: string, vehicleId: strin
 
 export async function updateVehicle(
   vehicleId: string,
-  values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate">,
+  values: Pick<Vehicle, "year" | "make" | "model" | "nickname" | "trim" | "vin" | "licensePlate" | "color">,
 ) {
   await updateDoc(doc(db, "vehicles", vehicleId), {
     year: values.year,
@@ -156,8 +158,23 @@ export async function updateVehicle(
     trim: values.trim ?? deleteField(),
     vin: values.vin ?? deleteField(),
     licensePlate: values.licensePlate ?? deleteField(),
+    color: values.color ?? deleteField(),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function uploadVehiclePhoto(ownerUserId: string, vehicleId: string, file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Choose an image smaller than 10 MB.");
+  const attachmentRef = doc(collection(db, "attachments"));
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `users/${ownerUserId}/vehicles/${vehicleId}/attachments/${attachmentRef.id}/${safeName}`;
+  const fileRef = ref(storage, storagePath);
+  await uploadBytes(fileRef, file, { contentType: file.type });
+  const heroImageUrl = await getDownloadURL(fileRef);
+  await updateDoc(doc(db, "vehicles", vehicleId), { heroAttachmentId: attachmentRef.id, heroImageUrl, updatedAt: serverTimestamp() });
+  await setDoc(attachmentRef, { ownerUserId, vehicleId, ownerType: "vehicle", ownerId: vehicleId, storagePath, fileName: file.name, contentType: file.type, sizeBytes: file.size, documentType: "photo", uploadStatus: "complete", extractionStatus: "not_requested", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+  return heroImageUrl;
 }
 
 export function withoutUndefined<T extends object>(values: T): Partial<T> {

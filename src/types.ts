@@ -10,6 +10,9 @@ export interface Vehicle {
   trim?: string;
   vin?: string;
   licensePlate?: string;
+  color?: string;
+  heroAttachmentId?: string;
+  heroImageUrl?: string;
   status: "active" | "sold" | "totaled" | "archived";
   latestMileage?: number;
   latestMileageDate?: Timestamp;
