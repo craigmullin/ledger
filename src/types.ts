@@ -50,6 +50,27 @@ export interface MaintenanceItem {
   intervalMonths?: number;
   lastDoneMileage?: number;
   lastDoneDate?: Timestamp;
+  linkedServiceEntryId?: string;
+  notes?: string;
+  sortOrder?: number;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  schemaVersion: 1;
+}
+
+export interface VehicleSpecification {
+  id: string;
+  ownerUserId: string;
+  vehicleId: string;
+  group: "fluid" | "part" | "torque" | "general";
+  label: string;
+  value: string;
+  unit?: string;
+  brand?: string;
+  source?: string;
+  isVerified?: boolean;
+  notes?: string;
+  sortOrder: number;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   schemaVersion: 1;

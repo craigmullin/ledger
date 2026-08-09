@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  deleteDoc,
   deleteField,
   getDocs,
   orderBy,
@@ -16,7 +17,7 @@ import {
 import { db, storage } from "./firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { shouldAdvanceMileage } from "./domain";
-import type { MaintenanceItem, ServiceEntry, Vehicle } from "./types";
+import type { MaintenanceItem, ServiceEntry, Vehicle, VehicleSpecification } from "./types";
 
 export async function loadVehicles(ownerUserId: string): Promise<Vehicle[]> {
   const snapshot = await getDocs(query(
@@ -144,6 +145,21 @@ export async function addMaintenanceItem(ownerUserId: string, vehicleId: string,
 }
 
 export async function deleteMaintenanceItem(itemId: string) { await updateDoc(doc(db, "maintenanceItems", itemId), { enabled: false, updatedAt: serverTimestamp() }); }
+
+export async function updateMaintenanceItem(itemId: string, values: Partial<Omit<MaintenanceItem, "id" | "ownerUserId" | "vehicleId" | "createdAt" | "updatedAt" | "schemaVersion">>) {
+  await updateDoc(doc(db, "maintenanceItems", itemId), { ...withoutUndefined(values), updatedAt: serverTimestamp() });
+}
+
+export async function loadVehicleSpecifications(ownerUserId: string, vehicleId: string): Promise<VehicleSpecification[]> {
+  const snapshot = await getDocs(query(collection(db, "vehicleSpecifications"), where("ownerUserId", "==", ownerUserId), where("vehicleId", "==", vehicleId)));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as VehicleSpecification).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function addVehicleSpecification(ownerUserId: string, vehicleId: string, values: Omit<VehicleSpecification, "id" | "ownerUserId" | "vehicleId" | "createdAt" | "updatedAt" | "schemaVersion">) {
+  return addDoc(collection(db, "vehicleSpecifications"), { ...withoutUndefined(values), ownerUserId, vehicleId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), schemaVersion: 1 });
+}
+
+export async function deleteVehicleSpecification(specificationId: string) { await deleteDoc(doc(db, "vehicleSpecifications", specificationId)); }
 
 export type ImportedServiceEntryValues = NewEntryValues;
 
