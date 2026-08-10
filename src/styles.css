@@ -1798,6 +1798,10 @@ h2 span {
 .public-hero h1 { font-size: clamp(4.1rem, 10vw, 8.7rem); line-height: .87; letter-spacing: -.06em; max-width: 850px; margin: 18px 0 28px }
 .public-hero h1 span { color: var(--orange) }
 .public-lede { max-width: 540px; font-size: 1.15rem; line-height: 1.7; margin-bottom: 30px; color: var(--muted) }
+.public-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center }
+.public-demo { min-height: 48px; padding: 0 21px; border: 1px solid var(--orange); border-radius: 6px; background: var(--orange); color: #fff; font: inherit; font-size: .76rem; font-weight: 700; letter-spacing: .01em; box-shadow: 0 8px 20px rgba(174, 82, 36, .18) }
+.public-demo:hover { background: #9f461f }
+.public-demo-note { margin: 15px 0 0; color: var(--muted); font-size: .72rem }
 .public-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
 .public-details div { padding: 38px 0; max-width: 420px }
 .public-details div + div { border-left: 1px solid var(--line); padding-left: 42px }
@@ -1817,6 +1821,8 @@ h2 span {
     .public-page { padding-left: 25px; padding-right: 25px }
     .public-hero { padding-top: 86px }
     .public-hero h1 { font-size: clamp(3.6rem, 18vw, 5.5rem) }
+    .public-actions { align-items: stretch; flex-direction: column }
+    .public-actions button { width: 100% }
     .public-details { grid-template-columns: 1fr }
     .public-details div + div { border-left: 0; border-top: 1px solid var(--line); padding-left: 0 }
     .public-footer { display: block }
