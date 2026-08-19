@@ -20,12 +20,24 @@ import { shouldAdvanceMileage } from "./domain";
 import type { MaintenanceItem, ServiceEntry, Vehicle, VehicleSpecification } from "./types";
 
 export async function loadVehicles(ownerUserId: string): Promise<Vehicle[]> {
-  const snapshot = await getDocs(query(
+  const [snapshot, entrySnapshot] = await Promise.all([getDocs(query(
     collection(db, "vehicles"),
     where("ownerUserId", "==", ownerUserId),
     where("status", "==", "active"),
-  ));
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Vehicle)
+  )), getDocs(query(collection(db, "serviceEntries"), where("ownerUserId", "==", ownerUserId)))]);
+  const summaries = new Map<string, { count: number; latest?: Timestamp }>();
+  for (const entry of entrySnapshot.docs) {
+    const data = entry.data() as ServiceEntry;
+    const current = summaries.get(data.vehicleId) ?? { count: 0 };
+    current.count += 1;
+    if (!current.latest || data.serviceDate.toMillis() > current.latest.toMillis()) current.latest = data.serviceDate;
+    summaries.set(data.vehicleId, current);
+  }
+  return snapshot.docs.map((item) => {
+    const vehicle = ({ id: item.id, ...item.data() }) as Vehicle;
+    const summary = summaries.get(vehicle.id);
+    return { ...vehicle, serviceEventCount: summary?.count ?? 0, lastServiceEventAt: summary?.latest };
+  })
     .sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0));
 }
 
@@ -119,6 +131,17 @@ export async function addServiceEntry(ownerUserId: string, vehicleId: string, va
   return entryRef.id;
 }
 
+export function filterServiceEntries(entries: ServiceEntry[], queryText: string): ServiceEntry[] {
+  const search = queryText.trim().toLocaleLowerCase();
+  if (!search) return entries;
+  const tokens = search.split(/\s+/);
+  return entries.filter((entry) => {
+    const searchable = [entry.title, entry.description, entry.notes, entry.providerName, entry.providerType, entry.category, ...(entry.parts ?? [])]
+      .filter(Boolean).join(" ").toLocaleLowerCase();
+    return tokens.every((token) => searchable.includes(token));
+  });
+}
+
 export async function updateServiceEntry(entryId: string, values: NewEntryValues) {
   await updateDoc(doc(db, "serviceEntries", entryId), { ...withoutUndefined(values), serviceDate: Timestamp.fromDate(new Date(`${values.serviceDate}T12:00:00`)), updatedAt: serverTimestamp() });
 }
@@ -160,6 +183,10 @@ export async function addVehicleSpecification(ownerUserId: string, vehicleId: st
 }
 
 export async function deleteVehicleSpecification(specificationId: string) { await deleteDoc(doc(db, "vehicleSpecifications", specificationId)); }
+
+export async function updateVehicleSpecification(specificationId: string, values: Partial<Omit<VehicleSpecification, "id" | "ownerUserId" | "vehicleId" | "createdAt" | "updatedAt" | "schemaVersion">>) {
+  await updateDoc(doc(db, "vehicleSpecifications", specificationId), { ...withoutUndefined(values), updatedAt: serverTimestamp() });
+}
 
 export type ImportedServiceEntryValues = NewEntryValues;
 

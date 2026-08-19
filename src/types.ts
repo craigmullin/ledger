@@ -16,6 +16,8 @@ export interface Vehicle {
   status: "active" | "sold" | "totaled" | "archived";
   latestMileage?: number;
   latestMileageDate?: Timestamp;
+  serviceEventCount?: number;
+  lastServiceEventAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   schemaVersion: 1;
@@ -30,6 +32,10 @@ export interface ServiceEntry {
   serviceDate: Timestamp;
   mileage?: number;
   providerType?: "diy" | "shop" | "dealer" | "other";
+  providerName?: string;
+  category?: string;
+  notes?: string;
+  parts?: string[];
   totalCostCents?: number;
   estimatedShopCostCents?: number;
   aiReviewStatus: "not_requested" | "pending" | "reviewed" | "dismissed" | "failed";
@@ -68,6 +74,7 @@ export interface VehicleSpecification {
   unit?: string;
   brand?: string;
   source?: string;
+  sourceUrl?: string;
   isVerified?: boolean;
   notes?: string;
   sortOrder: number;
