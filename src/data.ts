@@ -17,7 +17,7 @@ import {
 import { db, storage } from "./firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { shouldAdvanceMileage } from "./domain";
-import type { MaintenanceItem, ServiceEntry, Vehicle, VehicleSpecification } from "./types";
+import type { Attachment, MaintenanceItem, ServiceEntry, Vehicle, VehicleSpecification } from "./types";
 
 export async function loadVehicles(ownerUserId: string): Promise<Vehicle[]> {
   const [snapshot, entrySnapshot] = await Promise.all([getDocs(query(
@@ -161,6 +161,22 @@ export async function recordMileage(ownerUserId: string, vehicleId: string, mile
 export async function loadMaintenanceItems(ownerUserId: string, vehicleId: string): Promise<MaintenanceItem[]> {
   const snapshot = await getDocs(query(collection(db, "maintenanceItems"), where("ownerUserId", "==", ownerUserId), where("vehicleId", "==", vehicleId)));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as MaintenanceItem);
+}
+
+export async function loadAllMaintenanceItems(ownerUserId: string): Promise<MaintenanceItem[]> {
+  const snapshot = await getDocs(query(collection(db, "maintenanceItems"), where("ownerUserId", "==", ownerUserId)));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as MaintenanceItem);
+}
+
+export async function loadAttachments(ownerUserId: string, vehicleId?: string): Promise<Attachment[]> {
+  const constraints = [where("ownerUserId", "==", ownerUserId)];
+  if (vehicleId) constraints.push(where("vehicleId", "==", vehicleId));
+  const snapshot = await getDocs(query(collection(db, "attachments"), ...constraints));
+  const attachments = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Attachment);
+  return Promise.all(attachments.map(async (attachment) => {
+    try { return { ...attachment, downloadUrl: await getDownloadURL(ref(storage, attachment.storagePath)) }; }
+    catch { return attachment; }
+  })).then((items) => items.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)));
 }
 
 export async function addMaintenanceItem(ownerUserId: string, vehicleId: string, values: Omit<MaintenanceItem, "id" | "ownerUserId" | "vehicleId" | "createdAt" | "updatedAt" | "schemaVersion">) {

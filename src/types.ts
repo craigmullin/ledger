@@ -83,8 +83,27 @@ export interface VehicleSpecification {
   schemaVersion: 1;
 }
 
+export interface Attachment {
+  id: string;
+  ownerUserId: string;
+  vehicleId: string;
+  ownerType: "vehicle" | "service_entry";
+  ownerId: string;
+  storagePath: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  documentType: "photo" | "receipt" | "estimate" | "insurance" | "registration" | "title" | "manual" | "other";
+  uploadStatus: "pending" | "complete" | "failed";
+  downloadUrl?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  schemaVersion: 1;
+}
+
 export type View =
   | { name: "garage" }
+  | { name: "documents" }
   | { name: "vehicle"; vehicleId: string }
   | { name: "addVehicle" }
   | { name: "editVehicle"; vehicleId: string }

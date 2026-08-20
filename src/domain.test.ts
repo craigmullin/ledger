@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidEntry, normalizeMoneyToCents, shouldAdvanceMileage } from "./domain";
+import { compareMaintenanceDue, isValidEntry, normalizeMoneyToCents, shouldAdvanceMileage } from "./domain";
 import { filterServiceEntries, withoutUndefined } from "./data";
 import { Timestamp } from "firebase/firestore";
 
@@ -29,5 +29,20 @@ describe("Ledger entry rules", () => {
     expect(filterServiceEntries([entry], "hcf")).toEqual([entry]);
     expect(filterServiceEntries([{ ...entry, description: "Oil and filter change" }], "oil change")).toHaveLength(1);
     expect(filterServiceEntries([entry], "brakes")).toEqual([]);
+  });
+});
+
+describe("maintenance priority", () => {
+  const today = new Date("2026-08-20T12:00:00");
+  const mileage = 100_000;
+  const item = (nextDelta: number) => ({ intervalMiles: 10_000, lastDoneMileage: 90_000 + nextDelta });
+
+  it("orders overdue most overdue first, then upcoming soonest first", () => {
+    const items = [item(3_000), item(-1_000), item(1_000), item(-4_000)];
+    expect(items.sort((a, b) => compareMaintenanceDue(a, b, mileage, today))).toEqual([item(-4_000), item(-1_000), item(1_000), item(3_000)]);
+  });
+
+  it("puts unscheduled items last", () => {
+    expect(compareMaintenanceDue({}, item(2_000), mileage, today)).toBeGreaterThan(0);
   });
 });

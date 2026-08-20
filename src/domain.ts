@@ -24,7 +24,9 @@ export function maintenanceStatus(item: { intervalMiles?: number; intervalMonths
 
 export type MaintenanceDueStatus = "overdue" | "dueSoon" | "upcoming" | "unscheduled";
 
-export function maintenanceDue(item: { intervalMiles?: number; intervalMonths?: number; lastDoneMileage?: number; lastDoneDate?: Date }, mileage?: number, today = new Date()) {
+export interface MaintenanceScheduleInput { intervalMiles?: number; intervalMonths?: number; lastDoneMileage?: number; lastDoneDate?: Date }
+
+export function maintenanceDue(item: MaintenanceScheduleInput, mileage?: number, today = new Date()) {
   const nextMileage = item.intervalMiles != null && item.lastDoneMileage != null ? item.lastDoneMileage + item.intervalMiles : undefined;
   const nextDate = item.intervalMonths != null && item.lastDoneDate ? new Date(item.lastDoneDate.getFullYear(), item.lastDoneDate.getMonth() + item.intervalMonths, item.lastDoneDate.getDate()) : undefined;
   const mileageDelta = nextMileage != null && mileage != null ? nextMileage - mileage : undefined;
@@ -33,4 +35,21 @@ export function maintenanceDue(item: { intervalMiles?: number; intervalMonths?: 
   if ((mileageDelta != null && mileageDelta < 0) || (dateDelta != null && dateDelta < 0)) return { status: "overdue" as const, nextMileage, nextDate, mileageDelta, dateDelta };
   if ((mileageDelta != null && item.intervalMiles != null && mileageDelta <= item.intervalMiles * .1) || (dateDelta != null && dateDelta <= 30)) return { status: "dueSoon" as const, nextMileage, nextDate, mileageDelta, dateDelta };
   return { status: "upcoming" as const, nextMileage, nextDate, mileageDelta, dateDelta };
+}
+
+function maintenancePosition(item: MaintenanceScheduleInput, mileage?: number, today = new Date()) {
+  const due = maintenanceDue(item, mileage, today);
+  const mileagePosition = due.mileageDelta != null && item.intervalMiles ? due.mileageDelta / item.intervalMiles : undefined;
+  const intervalDays = item.intervalMonths ? item.intervalMonths * 30.4375 : undefined;
+  const datePosition = due.dateDelta != null && intervalDays ? due.dateDelta / intervalDays : undefined;
+  return { due, position: Math.min(...[mileagePosition, datePosition].filter((value): value is number => value != null)) };
+}
+
+export function compareMaintenanceDue(a: MaintenanceScheduleInput, b: MaintenanceScheduleInput, mileage?: number, today = new Date()) {
+  const left = maintenancePosition(a, mileage, today);
+  const right = maintenancePosition(b, mileage, today);
+  const rank = (status: MaintenanceDueStatus) => status === "overdue" ? 0 : status === "unscheduled" ? 2 : 1;
+  const rankDifference = rank(left.due.status) - rank(right.due.status);
+  if (rankDifference) return rankDifference;
+  return left.position - right.position;
 }
